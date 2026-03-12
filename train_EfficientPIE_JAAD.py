@@ -169,7 +169,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=50)
     # dataset path
     parser.add_argument('--data-path', type=str,
-                        default="/home/yphe/FangQu_temporary/JAAD")  # absolute path
+                        default="/Users/akvma/Developer/cvproject/EfficientPIE/JAAD")  # absolute path
     parser.add_argument('--weights', type=str, default="pre_train_weights/min_loss_pretrained_model_imagenet.pth",
                         help='initial weights path')
     # parser.add_argument('--weights', type=str, default="",

@@ -12,7 +12,6 @@ import random
 from PIL import Image
 import torch
 from torch.utils.data import Dataset
-from utils.adaptive_selection import adaptive_selection
 from torchvision.transforms import functional as F
 
 class MyDataSet(Dataset):
