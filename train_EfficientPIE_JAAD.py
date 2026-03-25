@@ -8,6 +8,7 @@
 """
 import argparse
 import os
+import csv
 
 import torch
 from torch import optim
@@ -120,6 +121,18 @@ def main(args):
     min_loss_path = "./weights/transfer_min_loss_model_JAAD.pth"
     print(model)
     print("Start Training now!")
+    
+    csv_file = args.csv_log
+    if csv_file:
+        os.makedirs(os.path.dirname(os.path.abspath(csv_file)), exist_ok=True)
+        file_exists = os.path.isfile(csv_file)
+        with open(csv_file, mode='a', newline='') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(['epoch', 'train_loss', 'train_acc', 'val_loss', 'val_acc', 'learning_rate', 
+                                 'train_precision', 'train_recall', 'train_f1', 
+                                 'val_precision', 'val_recall', 'val_f1'])
+
     for epoch in range(args.epochs):
         train_loss, train_acc, train_precision, train_recall, train_f1 = train_one_epoch(model=model,
                                                                                          optimizer=optimizer,
@@ -159,6 +172,12 @@ def main(args):
             torch.save(model.state_dict(), "./weights/transfer_model-{}_JAAD.pth".format(epoch))
             print(f'Saved model at epoch {epoch} with validation accuracy: {val_acc:.4f}, loss: {val_loss:.4f}')
 
+        if csv_file:
+            with open(csv_file, mode='a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([epoch, train_loss, train_acc, val_loss, val_acc, optimizer.param_groups[0]["lr"],
+                                 train_precision, train_recall, train_f1, val_precision, val_recall, val_f1])
+
     print("Finished Training!")
 
 
@@ -175,5 +194,6 @@ if __name__ == '__main__':
     # parser.add_argument('--weights', type=str, default="",
     #                     help='initial weights path')
     parser.add_argument('--device', default='cuda:1', help='device id (i.e. 0 or 0,1 or cpu)')
+    parser.add_argument('--csv_log', type=str, default="training_metrics_JAAD.csv", help='path to save metrics as CSV')
     opt = parser.parse_args()
     main(opt)
