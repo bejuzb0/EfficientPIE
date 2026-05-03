@@ -67,12 +67,12 @@ def plot_metrics(csv_path, output_img=None):
     axes[1, 1].set_ylabel('F1 Score')
     axes[1, 1].legend()
 
-    # 6. Learning Rate
-    axes[1, 2].plot(epochs, df['learning_rate'], label='Learning Rate', color='purple', marker='o', linewidth=2)
-    axes[1, 2].set_title('Learning Rate vs. Epochs')
-    axes[1, 2].set_xlabel('Epoch')
-    axes[1, 2].set_ylabel('Learning Rate')
-    axes[1, 2].legend()
+    # 6. Learning Rate (Removed)
+    fig.delaxes(axes[1, 2])
+    for ax in axes.flat:
+        if ax == axes[0, 1]:
+            continue
+        ax.set_ylim(bottom=0)
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     
