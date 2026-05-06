@@ -424,13 +424,13 @@
     <div class="future-grid">
       <div class="future-card">
         <span class="future-num">01</span>
-        <h3>Scene-Balanced Dataset</h3>
-        <p>Ensure each filming location appears in both crossing and non-crossing conditions. This decorrelates scene type from crossing label, eliminating the environment-intent correlation that EfficientPIE currently exploits. The model would be forced to find genuine behavioral signal.</p>
+        <h3>Pedestrian-Grounded VLM Distillation</h3>
+        <p>Replace CLIP with a domain-aware VLM (e.g., LLaVA) prompted with pedestrian-specific questions: <em>"Is this person at a crosswalk?", "Are they facing the road?", "Are they near a curb?"</em>. A pedestrian-grounded teacher produces a distillation signal the student cannot satisfy with background context alone — while preserving real-time inference speed.</p>
       </div>
       <div class="future-card">
         <span class="future-num">02</span>
-        <h3>Pedestrian-Grounded VLM Distillation</h3>
-        <p>Replace CLIP with a domain-aware VLM (e.g., LLaVA) prompted with pedestrian-specific questions: <em>"Is this person at a crosswalk?", "Are they facing the road?", "Are they near a curb?"</em>. A pedestrian-grounded teacher produces a distillation signal the student cannot satisfy with background context alone — while preserving real-time inference speed.</p>
+        <h3>Scene-Balanced Dataset</h3>
+        <p>Ensure each filming location appears in both crossing and non-crossing conditions. This decorrelates scene type from crossing label, eliminating the environment-intent correlation that EfficientPIE currently exploits. The model would be forced to find genuine behavioral signal.</p>
       </div>
     </div>
   </div>
@@ -442,11 +442,10 @@
     <h2 class="section-title" style="margin-bottom:1rem">References</h2>
     <ol class="ref-list">
       <li>Qu et al., <em>EfficientPIE: real-time prediction on pedestrian crossing intention with sole observation</em>, IJCAI 2025.</li>
-      <li>Munir et al., <em>Pedestrian Vision Language Model for Intentions Prediction</em>, IEEE OJITS 2025.</li>
-      <li>Liu et al., <em>Spatiotemporal Relationship Reasoning for Pedestrian Intent Prediction</em>, IEEE RA-L 2020.</li>
       <li>Rasouli et al., <em>PIE: A Large-Scale Dataset and Models for Pedestrian Intention Estimation</em>, ICCV 2019.</li>
       <li>Kotseruba et al., <em>Joint Attention in Autonomous Driving (JAAD)</em>, arXiv 2016.</li>
       <li>Hu et al., <em>Squeeze-and-Excitation Networks</em>, IEEE TPAMI 2019.</li>
+      <li>Selvaraju et al., <em>Grad-CAM: Visual Explanations from Deep Networks via Gradient-based Localization</em>, ICCV 2017.</li>
     </ol>
   </div>
 </section>
