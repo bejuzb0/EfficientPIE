@@ -4,5 +4,4 @@ runs/
 JAAD
 
 # Ignore runtime artifacts
-*.csv
 *_plots.png
