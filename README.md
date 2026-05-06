@@ -302,17 +302,21 @@ The model trains stably with steady improvement across all metrics. Validation a
 
 ### Scale Analysis
 
-The bar chart below (from `results/scale_analysis/`) shows accuracy and F1 stratified by bounding-box area quintile (Q1=farthest, Q5=closest). The red line tracks mean confidence — highest exactly where accuracy collapses.
+Accuracy and F1 stratified by bounding-box area quintile (Q1=farthest, Q5=closest). The red line tracks mean confidence — highest exactly where accuracy collapses.
 
-`results/scale_analysis/analysis_repo_protocol/plots/06_scale_accuracy_curve.png`
+![Scale accuracy curve](results/scale_analysis/analysis_repo_protocol/plots/06_scale_accuracy_curve.png)
 
 ### Occlusion Ablation
 
-`results/occlusion_plot.png` — F1 score under 11 spatial masking conditions, from full input down to context-only and pedestrian-only crops.
+F1 score under 11 spatial masking conditions, from full input down to context-only and pedestrian-only crops.
+
+![Occlusion ablation plot](results/occlusion_plot.png)
 
 ### Grad-CAM++ Samples
 
-`results/gradcam/` — Side-by-side original image and attention heatmap for correct/incorrect predictions. Key observation: the pedestrian body is consistently cold (blue) across all prediction categories.
+Side-by-side original image and attention heatmap for correct/incorrect predictions. The pedestrian body is consistently cold (blue) across all prediction categories — the model attends to background context, not the person.
+
+![GradCAM false negative example](results/gradcam/sample_0193_gt-crossing_pred-not_crossing_WRONG.png)
 
 ---
 
