@@ -74,10 +74,18 @@ def main(args):
     model = EfficientPIE(num_classes=2).to(device)
     print(model)
     # load model weights
-    model_weight_path = "./weights/transfer_noisy_model_JAAD.pth"
-    model.load_state_dict(torch.load(model_weight_path, map_location=device))
-    # test accuracy
-    print("using the weight:{}".format(model_weight_path))
+    if args.weights != "":
+        if os.path.exists(args.weights):
+            weights_dict = torch.load(args.weights, map_location=device)
+            # filter weights that don't match the model's state dict
+            load_weights_dict = {k: v for k, v in weights_dict.items()
+                                 if k in model.state_dict() and model.state_dict()[k].numel() == v.numel()}
+            model.load_state_dict(load_weights_dict, strict=False)
+            print("using the weight:{}".format(args.weights))
+        else:
+            raise FileNotFoundError("not found weights file: {}".format(args.weights))
+    else:
+        print("Warning: No weights path provided, testing with random initialization.")
     print("test set length:{}".format(test_dataset.__len__()))
     print(args)
     print("Start Testing!")
@@ -123,7 +131,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--data-path', type=str,
-                        default="/home/yphe/FangQu_temporary/JAAD")  # absolute path
+                        default="/Users/akvma/Developer/cvproject/EfficientPIE/JAAD")  # absolute path
+    parser.add_argument('--weights', type=str, default="./weights/transfer_noisy_model_JAAD.pth",
+                        help='initial weights path')
     parser.add_argument('--device', default='cuda:2', help='device id (i.e. 0 or 0,1 or cpu)')
     opt = parser.parse_args()
     main(opt)

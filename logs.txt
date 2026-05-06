@@ -1,0 +1,9 @@
+[train epoch 0] loss: 0.240, acc: 0.900, precision: 0.811, recall: 0.681, f1_score: 0.740: 100% 1136/1136 [1:19:06<00:00,  4.18s/it]
+[valid epoch 0] loss: 0.331, acc: 0.892, precision: 0.807, recall: 0.598, f1_score: 0.687, auc: 0.869: 100% 58/58 [03:08<00:00,  3.25s/it]
+Saved best model at epoch 0 with validation accuracy: 0.8916
+Saved min loss model at epoch 0 with validation accuracy: 0.8916, loss: 0.3310
+[train epoch 1] loss: 0.234, acc: 0.905, precision: 0.818, recall: 0.699, f1_score: 0.754: 100% 1136/1136 [42:17<00:00,  2.23s/it]
+[valid epoch 1] loss: 0.333, acc: 0.881, precision: 0.756, recall: 0.590, f1_score: 0.663, auc: 0.874: 100% 58/58 [02:30<00:00,  2.59s/it]
+[train epoch 2] loss: 0.227, acc: 0.908, precision: 0.826, recall: 0.707, f1_score: 0.762: 100% 1136/1136 [41:55<00:00,  2.21s/it]
+[valid epoch 2] loss: 0.342, acc: 0.885, precision: 0.798, recall: 0.565, f1_score: 0.661, auc: 0.872: 100% 58/58 [02:24<00:00,  2.50s/it]
+[train epoch 3] loss: 0.223, acc: 0.911, precision: 0.833, recall: 0.719, f1_score: 0.771:  91% 1035/1136 [36:25<04:10,  2.48s/it]
