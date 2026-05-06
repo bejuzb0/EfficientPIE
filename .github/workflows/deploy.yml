@@ -1,0 +1,70 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Copy assets into deployment folder
+        run: |
+          mkdir -p deployment/assets/images
+
+          # Training curves
+          cp 40_epoch_interation.png \
+             deployment/assets/images/training_curves.png
+
+          # Scale analysis
+          cp results/scale_analysis/analysis_repo_protocol/plots/06_scale_accuracy_curve.png \
+             deployment/assets/images/scale_accuracy_curve.png
+          cp results/scale_analysis/scale_failure_viz/01_scale_stratified_failure_grid.png \
+             deployment/assets/images/scale_failure_grid.png
+
+          # Occlusion
+          cp results/verify/occlusion_grid.png \
+             deployment/assets/images/occlusion_grid.png
+          cp results/occlusion_plot.png \
+             deployment/assets/images/occlusion_plot.png
+
+          # Grad-CAM++ samples for main section
+          cp results/gradcam_fp/sample_0043_gt-not_crossing_pred-crossing_WRONG.png \
+             deployment/assets/images/gradcam_road_crossing.png
+          cp results/gradcam_fn/sample_0639_gt-crossing_pred-not_crossing_WRONG.png \
+             deployment/assets/images/gradcam_child_midcross.png
+
+          # Grad-CAM++ before/after distillation comparison (sample 0200)
+          cp results/gradcam_fn/sample_0200_gt-crossing_pred-not_crossing_WRONG.png \
+             deployment/assets/images/gradcam_fn_before.png
+          cp results/gradcam_fn_distill/sample_0200_gt-crossing_pred-not_crossing_WRONG.png \
+             deployment/assets/images/gradcam_fn_after.png
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: deployment/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

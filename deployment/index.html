@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="CS766 Final Project: Pedestrian Intent Prediction — EfficientPIE analysis, scale paradox, occlusion ablation, Grad-CAM++, and VLM-guided knowledge distillation." />
+  <title>EfficientPIE — Pedestrian Intent Prediction · CS766</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ───────────────── NAV ───────────────── -->
+<nav class="navbar" id="navbar">
+  <div class="container nav-inner">
+    <a class="nav-brand" href="#">EfficientPIE</a>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">&#9776;</button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#motivation">Motivation</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#analysis">Analysis</a></li>
+      <li><a href="#gradcam">Grad-CAM</a></li>
+      <li><a href="#distillation">Distillation</a></li>
+      <li><a href="#future">Future Work</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ───────────────── HERO ───────────────── -->
+<header class="hero" id="hero">
+  <div class="container hero-content">
+    <p class="course-tag">CS766 Computer Vision &nbsp;·&nbsp; Final Project &nbsp;·&nbsp; University of Wisconsin–Madison</p>
+    <h1 class="hero-title">Pedestrian Intent Prediction<br>for Autonomous Vehicles</h1>
+    <p class="hero-subtitle">VLM-Guided Knowledge Distillation</p>
+    <div class="authors">
+      <span class="author">Aditya Kumar</span>
+      <span class="sep">·</span>
+      <span class="author">Amogh Sudhir Dixit</span>
+      <span class="sep">·</span>
+      <span class="author">Jahnavi Sunchu</span>
+    </div>
+    <div class="hero-links">
+      <a href="../MidTerm_Report.pdf" class="btn" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Midterm Report
+      </a>
+      <a href="../Presentation_Slides.pdf" class="btn" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        Final Slides
+      </a>
+      <a href="https://www.ijcai.org/proceedings/2025/0200.pdf" class="btn" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        EfficientPIE
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- ───────────────── MOTIVATION ───────────────── -->
+<section id="motivation" class="section section-light">
+  <div class="container">
+    <p class="section-eyebrow">The Problem</p>
+    <h2 class="section-title">Anticipating, not reacting.</h2>
+
+    <div class="two-col" style="align-items:start">
+      <div>
+        <p>A pedestrian stepping off a curb at 30 mph is already inside the vehicle's stopping distance. A reactive system that waits until the pedestrian <em>enters</em> the road has already missed its chance.</p>
+        <p style="margin-top:1rem">Autonomous vehicles need to <strong>predict</strong> crossing intent before it happens — from a single camera frame, in real time, at the edge of the sensor pipeline.</p>
+        <p style="margin-top:1rem"><strong>Task:</strong> given a single 300×300 RGB crop centered on a pedestrian, predict <span class="tag-cross">will cross</span> or <span class="tag-nocross">won't cross</span> — no video, no LIDAR, no temporal context.</p>
+        <p style="margin-top:1.5rem">We reproduced <strong>EfficientPIE</strong> (Qu et al., IJCAI 2025), currently one of the fastest intent classifiers at 0.21 ms/frame, on the JAAD benchmark dataset — then asked three questions about it:</p>
+        <ul class="finding-list" style="margin-top:.75rem;color:#374151">
+          <li>Does it fail fairly across <strong>demographic groups</strong>?</li>
+          <li>Does it behave differently at different pedestrian <strong>scales</strong>?</li>
+          <li>Is it actually looking at the <strong>pedestrian</strong> — or reading the scene?</li>
+        </ul>
+      </div>
+      <div class="stat-card-wrap">
+        <div class="stat-card">
+          <div class="stat-label">Reaction window @ 30 mph</div>
+          <div class="stat-number">≈ 0.89 s</div>
+          <div class="stat-sub">Once a pedestrian steps off the curb, the stopping distance window has already opened</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">EfficientPIE inference speed</div>
+          <div class="stat-number">0.21 ms</div>
+          <div class="stat-sub">7.4× faster than the previous fastest single-frame intent model</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">JAAD dataset</div>
+          <div class="stat-number">40,046</div>
+          <div class="stat-sub">Pedestrian samples across 346 video clips from a front-facing dashcam</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────── ARCHITECTURE ───────────────── -->
+<section id="architecture" class="section section-dark">
+  <div class="container">
+    <p class="section-eyebrow">Model</p>
+    <h2 class="section-title light">EfficientPIE Architecture</h2>
+    <p style="color:#94a3b8;max-width:760px">EfficientPIE (Qu et al., IJCAI 2025) is a purely convolutional, single-frame classifier with no recurrent components. It operates on a cropped 300×300 RGB image of the pedestrian and outputs a crossing / not-crossing decision in <strong style="color:#e2e8f0">0.21 ms</strong>.</p>
+
+    <div class="arch-diagram">
+      <div class="arch-block-flow">
+        <div class="flow-item input">Input<br><span>300×300 RGB</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item conv">CommonConv<br><span>3→32, stride 2</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item fused">FusedMBConv<br><span>32→32, stride 1</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item fused">FusedMBConv<br><span>32→64, stride 2</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item mb">MBConv + SE<br><span>64→128, stride 2</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item mb">MBConv + SE<br><span>128→256, stride 2</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item conv">CommonConv<br><span>256→1280, k=1</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item output">AvgPool → Dropout → Linear<br><span>1280 → 2</span></div>
+      </div>
+    </div>
+
+    <div class="two-col" style="margin-top:2rem">
+      <div>
+        <h4 style="color:#f1f5f9;font-size:1rem;font-weight:700;margin-bottom:.75rem">Design Choices</h4>
+        <ul class="finding-list" style="color:#cbd5e1">
+          <li><strong style="color:#e2e8f0">Depthwise separable convolutions</strong> throughout — ~1/9 the compute cost of standard convolutions.</li>
+          <li><strong style="color:#e2e8f0">Squeeze-and-Excitation</strong> channel attention in MBConv blocks for improved representational capacity.</li>
+          <li><strong style="color:#e2e8f0">No recurrent components</strong> — sole observation (single frame) is the design constraint; no temporal context required.</li>
+          <li>Paper also applies <strong style="color:#e2e8f0">IDIL</strong> (Intention Domain Incremental Learning) and <strong style="color:#e2e8f0">Progressive Perturbation</strong> during training — contributing ~5–6% accuracy improvement over the base model.</li>
+        </ul>
+      </div>
+      <div>
+        <h4 style="color:#f1f5f9;font-size:1rem;font-weight:700;margin-bottom:.75rem">Our Training Setup</h4>
+        <div class="arch-block">
+          <div class="arch-row"><span class="arch-key">Dataset</span><span class="arch-val">JAAD (40,046 samples, 0.5 overlap ratio)</span></div>
+          <div class="arch-row"><span class="arch-key">Optimizer</span><span class="arch-val">RMSProp, lr=1e-5, weight decay=1e-4</span></div>
+          <div class="arch-row"><span class="arch-key">Schedule</span><span class="arch-val">Cosine annealing with warm restarts</span></div>
+          <div class="arch-row"><span class="arch-key">Batch / Epochs</span><span class="arch-val">32 / 40 (paper: 50)</span></div>
+          <div class="arch-row"><span class="arch-key">Augmentation</span><span class="arch-val">Random H-flip, color jitter (brightness / contrast / saturation / hue)</span></div>
+          <div class="arch-row"><span class="arch-key">Normalization</span><span class="arch-val">mean = std = 0.5 per channel</span></div>
+          <div class="arch-row"><span class="arch-key">Hardware</span><span class="arch-val">Google Colab Pro GPU</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────── ANALYSIS ───────────────── -->
+<section id="analysis" class="section section-light">
+  <div class="container">
+    <p class="section-eyebrow">Our Investigation</p>
+    <h2 class="section-title">Four-Part Analysis</h2>
+    <p class="analysis-intro">Rather than simply verifying the paper's reported accuracy, we ran a structured robustness study: first reproducing the baseline, then probing <em>how</em> and <em>where</em> it fails.</p>
+
+    <!-- Step 1: Baseline Reproduction -->
+    <div class="analysis-step">
+      <div class="step-marker">01</div>
+      <div class="step-content">
+        <h3>Baseline Reproduction — Accuracy Can Mislead</h3>
+        <p>We reproduced EfficientPIE on the JAAD test split (1,876 samples: 1,584 non-crossing, 292 crossing). The headline accuracy of 88.3% looks strong — until you look at what's hiding behind it.</p>
+
+        <div class="two-col" style="margin-top:1.5rem;align-items:start">
+          <div>
+            <p>A model that ignores every crossing pedestrian still achieves ~84% accuracy on this split due to the 5.4:1 class imbalance. Our model scores 88.3% — but only <strong>64% recall on the crossing class</strong>. It misses 1 in 3 pedestrians about to cross.</p>
+            <div class="step-finding" style="margin-top:1.25rem">
+              <strong>In a safety-critical system, 64% recall on the dangerous class is the number that matters — not 88.3% overall accuracy.</strong>
+            </div>
+          </div>
+          <div>
+            <div class="confusion-matrix-wrap">
+              <p class="cm-title">Confusion Matrix &nbsp;<span class="cm-meta">n = 1,876 &nbsp;·&nbsp; acc = 0.883</span></p>
+              <table class="cm-table">
+                <thead>
+                  <tr><th></th><th colspan="2">Predicted</th></tr>
+                  <tr><th>Actual</th><th>Not Crossing</th><th>Crossing</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th>Not Crossing</th><td class="cm-tn">1470</td><td class="cm-fp">114</td></tr>
+                  <tr><th>Crossing</th><td class="cm-fn">105</td><td class="cm-tp">187</td></tr>
+                </tbody>
+              </table>
+              <p class="cm-note">105 crossing pedestrians predicted as not crossing.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Demographic Bias -->
+    <div class="analysis-step">
+      <div class="step-marker">02</div>
+      <div class="step-content">
+        <h3>Demographic Bias Analysis — Failure Is Environmental</h3>
+        <p>We stratified errors across pedestrian attributes: age group (adult / young / senior / child), gender, and group size. None of the inter-group performance gaps were statistically significant.</p>
+
+        <div class="two-col" style="margin-top:1.5rem">
+          <div>
+            <div class="arch-block" style="margin-bottom:1rem">
+              <div class="arch-row"><span class="arch-key">Age groups</span><span class="arch-val">Adult, Young, Senior, Child</span></div>
+              <div class="arch-row"><span class="arch-key">Gender</span><span class="arch-val">Male, Female</span></div>
+              <div class="arch-row"><span class="arch-key">Group size</span><span class="arch-val">Alone, Pair, Group</span></div>
+              <div class="arch-row"><span class="arch-key">Significant gaps?</span><span class="arch-val">None found</span></div>
+            </div>
+          </div>
+          <div>
+            <div class="step-finding">
+              <strong>The failure mode is environmental, not demographic.</strong> The model doesn't fail based on <em>who</em> the pedestrian is — it fails based on <em>where</em> they are relative to the camera and what surrounds them. Ruling out demographic bias pointed us directly at scale and context as the culprits.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Scale Paradox -->
+    <div class="analysis-step">
+      <div class="step-marker">03</div>
+      <div class="step-content">
+        <h3>Scale Paradox — Closest Pedestrians Fail Most</h3>
+        <p>We used bounding-box area as a proxy for pedestrian distance and split the test set into five equal quintiles (Q1 = farthest, Q5 = closest). The result is a striking paradox.</p>
+
+        <div class="table-scroll" style="margin-top:1.25rem">
+          <table class="data-table light">
+            <thead>
+              <tr>
+                <th>Quintile</th>
+                <th>Bbox area (px²)</th>
+                <th>n</th>
+                <th>Accuracy</th>
+                <th>F1</th>
+                <th>Mean Confidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Q1 (farthest)</td><td>243 – 1,536</td><td>376</td><td>0.894</td><td>0.286</td><td>0.931</td></tr>
+              <tr><td>Q2</td><td>1,537 – 2,475</td><td>375</td><td>0.912</td><td>0.476</td><td>0.940</td></tr>
+              <tr><td>Q3</td><td>2,480 – 4,982</td><td>375</td><td>0.901</td><td>0.584</td><td>0.938</td></tr>
+              <tr><td>Q4</td><td>4,988 – 8,100</td><td>375</td><td>0.944</td><td>0.696</td><td>0.943</td></tr>
+              <tr class="row-highlight"><td><strong>Q5 (closest)</strong></td><td>8,109 – 103,104</td><td>375</td><td><strong>0.765</strong></td><td><strong>0.722</strong></td><td>0.895</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="step-finding" style="margin-top:1.25rem">
+          <strong>Accuracy collapses exactly when the pedestrian is closest — the most safety-critical case — and the model makes those errors with high confidence.</strong> When the pedestrian fills the frame, surrounding scene context is cropped out, and the model has no signal to fall back on.
+        </div>
+
+        <img src="assets/images/scale_accuracy_curve.png" alt="Accuracy and F1 by bounding-box area quintile" class="step-img" />
+        <p style="color:#64748b;font-size:0.825rem;margin-top:0.5rem">Accuracy and F1 by quintile. Red line = mean confidence — highest exactly where accuracy collapses in Q5.</p>
+
+        <img src="assets/images/scale_failure_grid.png" alt="Failure cases stratified by scale quintile" class="step-img" style="margin-top:1.5rem" />
+        <p style="color:#64748b;font-size:0.825rem;margin-top:0.5rem">Representative failure cases from each quintile. The Q5 (closest) row shows where the model is most confidently wrong.</p>
+      </div>
+    </div>
+
+    <!-- Step 4: Spatial Ablation -->
+    <div class="analysis-step">
+      <div class="step-marker">04</div>
+      <div class="step-content">
+        <h3>Spatial Ablation — The Pedestrian Body Is Irrelevant</h3>
+        <p>We systematically masked different regions of every test image under <strong>11 conditions</strong> to measure how much each spatial region contributes to the prediction.</p>
+
+        <img src="assets/images/occlusion_grid.png" alt="11 spatial masking conditions" class="step-img" style="margin-top:1.25rem;width:100%" />
+        <p style="color:#64748b;font-size:0.825rem;margin-top:0.5rem">The 11 masking conditions applied to every test image.</p>
+
+        <div class="table-scroll" style="margin-top:1.5rem">
+          <table class="data-table light">
+            <thead><tr><th>Masking Condition</th><th>F1</th></tr></thead>
+            <tbody>
+              <tr class="row-highlight"><td><strong>None (baseline)</strong></td><td><strong>0.631</strong></td></tr>
+              <tr><td>Top half masked</td><td>0.549</td></tr>
+              <tr><td>Bottom half masked</td><td>0.501</td></tr>
+              <tr><td>Left half masked</td><td>0.533</td></tr>
+              <tr><td>Right half masked</td><td>0.560</td></tr>
+              <tr><td>Random 10% occluded</td><td>0.584</td></tr>
+              <tr><td>Random 25% occluded</td><td>0.566</td></tr>
+              <tr><td>Random 50% occluded</td><td>0.532</td></tr>
+              <tr><td>Random 75% occluded</td><td>0.491</td></tr>
+              <tr class="row-good"><td>Context only (pedestrian removed)</td><td>0.457</td></tr>
+              <tr class="row-bad"><td><strong>Pedestrian only (background removed)</strong></td><td><strong>0.064</strong> &nbsp;← near chance</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <img src="assets/images/occlusion_plot.png" alt="F1 under each masking condition" class="step-img" style="margin-top:1.5rem;width:100%" />
+        <p style="color:#64748b;font-size:0.825rem;margin-top:0.5rem">F1 score under each masking condition.</p>
+
+        <div class="step-finding" style="margin-top:1.25rem">
+          <strong>EfficientPIE classifies crossing by reading the scene, not the person.</strong> Removing the pedestrian body entirely collapses F1 to near chance (0.064). Keeping only the background context preserves ~70% of baseline performance (0.457 vs 0.631).
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────────── GRAD-CAM ───────────────── -->
+<section id="gradcam" class="section section-dark">
+  <div class="container">
+    <p class="section-eyebrow">Attention Visualization</p>
+    <h2 class="section-title light">Grad-CAM++ — Where Is the Model Looking?</h2>
+    <p style="color:#94a3b8;max-width:760px">We applied Grad-CAM++ to the final convolutional layer to visualize which pixels drive the model's prediction. <span style="color:#f87171;font-weight:600">Red = high attention.</span> <span style="color:#4fc3f7;font-weight:600">Blue = ignored.</span></p>
+
+    <div class="gradcam-grid" style="margin-top:2rem">
+      <div class="gradcam-item">
+        <img src="assets/images/gradcam_road_crossing.png" alt="Grad-CAM — road crossing scene" />
+        <p class="gradcam-label" style="color:#f59e0b">Road crossing</p>
+        <p class="gradcam-desc">Crossing pedestrian ignored. Attention scatters to background houses and nearby road surface — not the person in motion.</p>
+      </div>
+      <div class="gradcam-item">
+        <img src="assets/images/gradcam_child_midcross.png" alt="Grad-CAM — child mid-cross" />
+        <p class="gradcam-label wrong">Child mid-cross</p>
+        <p class="gradcam-desc">Model locked onto the SUV and taxi sign in the background. The child actively crossing is completely invisible to the model.</p>
+      </div>
+    </div>
+
+    <div class="insight-box dark" style="margin-top:2rem">
+      <p><strong style="color:#f1f5f9">The pedestrian body is cold in every image.</strong> The model locks onto static background cues — parked cars, building edges, road signs, road texture — regardless of whether the prediction is correct. This confirms what the occlusion ablation showed statistically: <em>scene context is already what's driving predictions, not the pedestrian.</em></p>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────── BRIDGE ───────────────── -->
+<section class="section-bridge">
+  <div class="container">
+    <p class="bridge-title">Two findings, one cause.</p>
+    <p class="bridge-subtitle">The scale paradox and the occlusion ablation tell the same story.</p>
+
+    <div class="bridge-grid">
+      <div class="bridge-card">
+        <div class="bridge-card-num">SCALE PARADOX</div>
+        <h4>Closest pedestrians fail with highest confidence</h4>
+        <p>When the pedestrian fills the frame, surrounding scene context is cropped out of the 300×300 input. The model has no background signal to work with — and collapses. Accuracy drops 18 points in Q5 despite the model reporting peak confidence.</p>
+      </div>
+      <div class="bridge-card">
+        <div class="bridge-card-num">SPATIAL ABLATION + GRAD-CAM</div>
+        <h4>The model reads the scene, not the person</h4>
+        <p>Removing the pedestrian body drops F1 to near chance (0.064). Keeping only the background preserves 70% of baseline F1. Grad-CAM++ confirms this visually — the pedestrian is always cold, background always hot.</p>
+      </div>
+    </div>
+
+    <div class="bridge-arrow">↓</div>
+
+    <div class="bridge-hypothesis">
+      <p><strong>Root cause:</strong> EfficientPIE has learned to classify crossing intent by reading static background cues — not pedestrian body language or intent signals. The scene shortcuts work in most cases but break down when context is missing (large/close crops) or when the correct answer requires understanding the pedestrian.</p>
+      <p style="margin-top:1rem"><strong>Hypothesis:</strong> if we force the model to align its internal representations with a <strong>scene-aware teacher</strong> that has access to the full uncropped frame, it may learn more principled scene semantics — reducing reliance on brittle, crop-dependent shortcuts. Enter <strong style="color:#38bdf8">VLM Knowledge Distillation.</strong></p>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────── DISTILLATION ───────────────── -->
+<section id="distillation" class="section section-light">
+  <div class="container">
+    <p class="section-eyebrow">Our Approach</p>
+    <h2 class="section-title">VLM Knowledge Distillation</h2>
+
+    <div class="two-col" style="align-items:start">
+      <div>
+        <p>We used <strong>CLIP ViT-B/32</strong> as an offline teacher. CLIP processes the full, uncropped JAAD frames — giving it access to complete scene context the student never sees. The teacher's embeddings are extracted once offline; at inference time, only the student runs.</p>
+
+        <p style="margin-top:1rem">The student (EfficientPIE) gets a <strong>1280→1024→768 MLP projector</strong> attached to its bottleneck feature vector. During training, the projector is penalized for not matching the CLIP embedding of the corresponding full scene.</p>
+
+        <div class="distill-pipeline">
+          <div class="distill-step clip">CLIP ViT-B/32<br><span>Full uncropped frame (offline)</span></div>
+          <div class="distill-arrow">→</div>
+          <div class="distill-step loss-box">768-d Embedding<br><span>Scene representation</span></div>
+          <div class="distill-arrow">↕</div>
+          <div class="distill-step student">EfficientPIE<br><span>Cropped 300×300 input</span></div>
+          <div class="distill-arrow">→</div>
+          <div class="distill-step loss-box">MLP Projector<br><span>1280 → 1024 → 768</span></div>
+        </div>
+
+        <div class="code-block" style="margin-top:1.5rem">
+          <code>L = L_task  +  α × L_distill</code>
+          <div class="code-comment">L_task &nbsp;&nbsp;&nbsp; — CrossEntropyLoss (crossing / not-crossing)</div>
+          <div class="code-comment">L_distill  — MSELoss (student projector vs CLIP embedding)</div>
+          <div class="code-comment">α = 0.5 &nbsp;&nbsp; — equal task / distillation weight</div>
+          <div class="code-comment">Hook &nbsp;&nbsp;&nbsp;&nbsp;— model.flatten [B, 1280]</div>
+        </div>
+
+        <div class="arch-block" style="margin-top:1.5rem">
+          <div class="arch-row"><span class="arch-key">Student</span><span class="arch-val">EfficientPIE — frozen backbone + projector head</span></div>
+          <div class="arch-row"><span class="arch-key">Teacher</span><span class="arch-val">CLIP ViT-B/32 — offline, full scene, zero inference cost</span></div>
+          <div class="arch-row"><span class="arch-key">Epochs</span><span class="arch-val">40, same training schedule as baseline</span></div>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="font-size:1rem;font-weight:700;color:#0d1f40;margin-bottom:1rem">Grad-CAM++ — Before vs. After Distillation</h4>
+        <p style="color:#475569;font-size:0.875rem;margin-bottom:0.25rem">Same sample (false negative — crossing pedestrian missed). Heatmap changes after distillation:</p>
+
+        <div class="before-after-grid">
+          <div class="before-after-item">
+            <div class="before-after-label before">Before — Baseline</div>
+            <img src="assets/images/gradcam_fn_before.png" alt="Baseline Grad-CAM false negative" />
+            <p style="font-size:0.8rem;color:#64748b;margin-top:0.4rem">Attention on the parked car — pedestrian body entirely cold.</p>
+          </div>
+          <div class="before-after-item">
+            <div class="before-after-label after">After — Distilled</div>
+            <img src="assets/images/gradcam_fn_after.png" alt="Distilled Grad-CAM false negative" />
+            <p style="font-size:0.8rem;color:#64748b;margin-top:0.4rem">Attention shifts higher — more architectural features, less scattered. Pedestrian still cold.</p>
+          </div>
+        </div>
+
+        <div class="result-box" style="margin-top:1.5rem">
+          <p class="result-label">Outcome</p>
+          <p>Accuracy, F1, and Recall were <strong>unchanged</strong> after distillation. Grad-CAM++ shows a small but visible increase in activation around the pedestrian's feet and lower body — a sign that the distillation signal nudged the model in the right direction.</p>
+          <p style="margin-top:.75rem">However, it isn't enough. The increase in pedestrian-region activation is too weak to meaningfully shift what drives the prediction. CLIP's general image–text pretraining can be satisfied by background scene templates alone, so the student never has to learn pedestrian-level attention to minimize the distillation loss. A pedestrian-grounded teacher is needed.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────── FUTURE WORK ───────────────── -->
+<section id="future" class="section section-dark" style="padding-top:0">
+  <div class="container" style="padding-top:4rem;border-top:1px solid rgba(255,255,255,0.08)">
+    <p class="section-eyebrow">What's next</p>
+    <h2 class="section-title light">Future Work</h2>
+    <div class="future-grid">
+      <div class="future-card">
+        <span class="future-num">01</span>
+        <h3>Scene-Balanced Dataset</h3>
+        <p>Ensure each filming location appears in both crossing and non-crossing conditions. This decorrelates scene type from crossing label, eliminating the environment-intent correlation that EfficientPIE currently exploits. The model would be forced to find genuine behavioral signal.</p>
+      </div>
+      <div class="future-card">
+        <span class="future-num">02</span>
+        <h3>Pedestrian-Grounded VLM Distillation</h3>
+        <p>Replace CLIP with a domain-aware VLM (e.g., LLaVA) prompted with pedestrian-specific questions: <em>"Is this person at a crosswalk?", "Are they facing the road?", "Are they near a curb?"</em>. A pedestrian-grounded teacher produces a distillation signal the student cannot satisfy with background context alone — while preserving real-time inference speed.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────── REFERENCES ───────────────── -->
+<section class="section section-light">
+  <div class="container">
+    <h2 class="section-title" style="margin-bottom:1rem">References</h2>
+    <ol class="ref-list">
+      <li>Qu et al., <em>EfficientPIE: real-time prediction on pedestrian crossing intention with sole observation</em>, IJCAI 2025.</li>
+      <li>Munir et al., <em>Pedestrian Vision Language Model for Intentions Prediction</em>, IEEE OJITS 2025.</li>
+      <li>Liu et al., <em>Spatiotemporal Relationship Reasoning for Pedestrian Intent Prediction</em>, IEEE RA-L 2020.</li>
+      <li>Rasouli et al., <em>PIE: A Large-Scale Dataset and Models for Pedestrian Intention Estimation</em>, ICCV 2019.</li>
+      <li>Kotseruba et al., <em>Joint Attention in Autonomous Driving (JAAD)</em>, arXiv 2016.</li>
+      <li>Hu et al., <em>Squeeze-and-Excitation Networks</em>, IEEE TPAMI 2019.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ───────────────── FOOTER ───────────────── -->
+<footer class="footer">
+  <div class="container footer-inner">
+    <p>CS766 Computer Vision &nbsp;·&nbsp; University of Wisconsin–Madison</p>
+    <p>Aditya Kumar &nbsp;·&nbsp; Amogh Sudhir Dixit &nbsp;·&nbsp; Jahnavi Sunchu</p>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>
