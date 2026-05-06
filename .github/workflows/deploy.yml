@@ -29,6 +29,10 @@ jobs:
         run: |
           mkdir -p deployment/assets/images
 
+          # Reports and slides
+          cp MidTerm_Report.pdf deployment/MidTerm_Report.pdf
+          cp Presentation_Slides.pdf deployment/Presentation_Slides.pdf
+
           # Training curves
           cp 40_epoch_interation.png \
              deployment/assets/images/training_curves.png
@@ -56,6 +60,12 @@ jobs:
              deployment/assets/images/gradcam_fn_before.png
           cp results/gradcam_fn_distill/sample_0200_gt-crossing_pred-not_crossing_WRONG.png \
              deployment/assets/images/gradcam_fn_after.png
+
+          # Demographic bias plots
+          cp results/bias/bias_attributes.png \
+             deployment/assets/images/bias_attributes.png
+          cp results/bias/bias_group.png \
+             deployment/assets/images/bias_group.png
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v4
