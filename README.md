@@ -29,13 +29,13 @@ Actual  NC   1470    114
 ### 2. Scale Paradox — the model fails on close pedestrians
 Pedestrian bounding-box area was used as a proxy for distance. Performance stratified into quintiles:
 
-| Quintile | Bbox area (proxy) | Accuracy | F1 | Mean Confidence |
-|----------|-------------------|----------|----|-----------------|
-| Q1 (farthest) | smallest | 0.884 | 0.30 | low |
-| Q2 | — | 0.917 | — | — |
-| Q3 | — | 0.961 | — | — |
-| Q4 | — | 0.944 | — | — |
-| Q5 (closest) | largest | **0.765** | **low** | **high** |
+| Quintile | Bbox area range (px²) | n | Accuracy | F1 | Mean Confidence |
+|----------|-----------------------|---|----------|----|-----------------|
+| Q1 (farthest) | 243 – 1,536 | 376 | 0.894 | 0.286 | 0.931 |
+| Q2 | 1,537 – 2,475 | 375 | 0.912 | 0.476 | 0.940 |
+| Q3 | 2,480 – 4,982 | 375 | 0.901 | 0.584 | 0.938 |
+| Q4 | 4,988 – 8,100 | 375 | 0.944 | 0.696 | 0.943 |
+| Q5 (closest) | 8,109 – 103,104 | 375 | **0.765** | **0.722** | 0.895 |
 
 The model makes its worst errors on the closest pedestrians **with high confidence** — exactly the safety-critical cases. The missing signal is not in the crop; the crop loses surrounding scene context when the pedestrian fills the frame.
 
