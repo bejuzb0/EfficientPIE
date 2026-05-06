@@ -306,9 +306,17 @@ Accuracy and F1 stratified by bounding-box area quintile (Q1=farthest, Q5=closes
 
 ![Scale accuracy curve](results/scale_analysis/analysis_repo_protocol/plots/06_scale_accuracy_curve.png)
 
+Failure examples stratified by scale quintile — the Q5 (closest) row shows the cases where the model is most wrong:
+
+![Scale stratified failure grid](results/scale_analysis/scale_failure_viz/01_scale_stratified_failure_grid.png)
+
 ### Occlusion Ablation
 
-F1 score under 11 spatial masking conditions, from full input down to context-only and pedestrian-only crops.
+The 11 spatial masking conditions applied to every test image, from no occlusion down to pedestrian-only and context-only crops:
+
+![Occlusion condition grid](results/verify/occlusion_grid.png)
+
+F1 score under each condition — removing the pedestrian body entirely collapses F1 to near chance:
 
 ![Occlusion ablation plot](results/occlusion_plot.png)
 
