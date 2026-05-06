@@ -334,8 +334,6 @@ Side-by-side original image and attention heatmap for correct/incorrect predicti
 |------|-------------|
 | `weights/transfer_best_model_JAAD_best.pth` | Best EfficientPIE checkpoint trained on JAAD (88.3% acc) |
 | `weights/transfer_best_model_distill.pth` | Best distilled model (CLIP ViT-B/32 teacher) |
-| `pre_train_weights/best_pretrained_model_imagenet_new.pth` | ImageNet pretrained backbone |
-| `weights_v8/model_8_PIE_IL_step*.pth` | Incremental learning checkpoints on PIE dataset |
 
 ---
 
